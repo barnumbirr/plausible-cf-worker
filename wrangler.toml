@@ -1,0 +1,35 @@
+name = "edge-utils"
+main = "src/worker.js"
+compatibility_date = "2026-02-24"
+account_id = "d2f7937ca605f045ca5b840739a55da7"
+
+# Plausible script URLs per hostname.
+# To add a new site: add an entry below + a [[routes]] entry, then redeploy.
+[vars.PLAUSIBLE]
+"homelab.lu" = "https://plausible.io/js/pa-7Qk4Gbi90pq2yhNnSP9Qo.js"
+"keysets.simon.tf" = "https://plausible.io/js/pa-LZpyGRXplYHk-pUTwGaM7.js"
+"monka.tv" = "https://plausible.io/js/pa-6LAAyedkYoAtuO1lpZknB.js"
+"simon.tf" = "https://plausible.io/js/pa-yjnhvzFeKY12-Gfkv3BdZ.js"
+"0xff.tf" = "https://plausible.io/js/pa-bIeH0rnAp_z1IfvPhhlWT.js"
+"vault.tf" = "https://plausible.io/js/pa-b6bLKeWA9RrpQuWkEFxht.js"
+"wiki.simon.tf" = "https://plausible.io/js/pa-dXXRTtZ5cVOo47CxLovCz.js"
+
+[[routes]]
+pattern = "*homelab.lu/zk/*"
+zone_name = "homelab.lu"
+
+[[routes]]
+pattern = "*monka.tv/zk/*"
+zone_name = "monka.tv"
+
+[[routes]]
+pattern = "*simon.tf/zk/*"
+zone_name = "simon.tf"
+
+[[routes]]
+pattern = "*vault.tf/zk/*"
+zone_name = "vault.tf"
+
+[[routes]]
+pattern = "*0xff.tf/zk/*"
+zone_name = "0xff.tf"
