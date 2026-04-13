@@ -5,8 +5,12 @@ const ScriptWithoutExtension = ScriptName.replace('.js', '')
 function getScriptUrl(env, hostname) {
   const raw = env.PLAUSIBLE
   if (!raw) return null
-  const scripts = typeof raw === 'string' ? JSON.parse(raw) : raw
-  return scripts[hostname] || null
+  try {
+    const scripts = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return scripts[hostname] || null
+  } catch {
+    return null
+  }
 }
 
 export default {

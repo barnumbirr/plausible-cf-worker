@@ -1,5 +1,7 @@
-import { env, createExecutionContext, waitOnExecutionContext, fetchMock } from 'cloudflare:test'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
+import { describe, it, expect } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { server } from './test-server.js'
 import worker from './worker.js'
 
 const SCRIPT_BODY = 'console.log("plausible")'
@@ -12,11 +14,6 @@ const testEnv = {
   ...env,
   PLAUSIBLE: JSON.stringify(multiSiteConfig),
 }
-
-beforeEach(() => {
-  fetchMock.activate()
-  fetchMock.disableNetConnect()
-})
 
 async function callWorker(url, opts = {}) {
   const request = new Request(url, opts)
@@ -50,10 +47,13 @@ describe('GET /zk/js/script.js (no env var for host)', () => {
 
 describe('GET /zk/js/script.js', () => {
   it('proxies the plausible script for a known host', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/js/pa-abc123.js' })
-      .reply(200, SCRIPT_BODY, { headers: { 'content-type': 'text/javascript' } })
+    server.use(
+      http.get('https://plausible.io/js/pa-abc123.js', () => {
+        return new HttpResponse(SCRIPT_BODY, {
+          headers: { 'content-type': 'text/javascript' },
+        })
+      })
+    )
 
     const response = await callWorker('https://monka.tv/zk/js/script.js')
     expect(response.status).toBe(200)
@@ -66,10 +66,11 @@ describe('GET /zk/js/script.js', () => {
   })
 
   it('does not cache a failed upstream response', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/js/pa-abc123.js' })
-      .reply(502, 'Bad Gateway')
+    server.use(
+      http.get('https://plausible.io/js/pa-abc123.js', () => {
+        return new HttpResponse('Bad Gateway', { status: 502 })
+      })
+    )
 
     const response = await callWorker('https://monka.tv/zk/js/script.js')
     expect(response.status).toBe(502)
@@ -78,10 +79,13 @@ describe('GET /zk/js/script.js', () => {
 
 describe('GET /zk/js/script.js (multi-site)', () => {
   it('resolves correct script URL per hostname', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/js/pa-def456.js' })
-      .reply(200, 'simon-script', { headers: { 'content-type': 'text/javascript' } })
+    server.use(
+      http.get('https://plausible.io/js/pa-def456.js', () => {
+        return new HttpResponse('simon-script', {
+          headers: { 'content-type': 'text/javascript' },
+        })
+      })
+    )
 
     const response = await callWorker('https://simon.tf/zk/js/script.js')
     expect(response.status).toBe(200)
@@ -89,10 +93,13 @@ describe('GET /zk/js/script.js (multi-site)', () => {
   })
 
   it('resolves subdomain separately from parent domain', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/js/pa-ghi789.js' })
-      .reply(200, 'keysets-script', { headers: { 'content-type': 'text/javascript' } })
+    server.use(
+      http.get('https://plausible.io/js/pa-ghi789.js', () => {
+        return new HttpResponse('keysets-script', {
+          headers: { 'content-type': 'text/javascript' },
+        })
+      })
+    )
 
     const response = await callWorker('https://keysets.simon.tf/zk/js/script.js')
     expect(response.status).toBe(200)
@@ -100,10 +107,13 @@ describe('GET /zk/js/script.js (multi-site)', () => {
   })
 
   it('preserves content-type from upstream', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/js/pa-abc123.js' })
-      .reply(200, SCRIPT_BODY, { headers: { 'content-type': 'application/javascript; charset=utf-8' } })
+    server.use(
+      http.get('https://plausible.io/js/pa-abc123.js', () => {
+        return new HttpResponse(SCRIPT_BODY, {
+          headers: { 'content-type': 'application/javascript; charset=utf-8' },
+        })
+      })
+    )
 
     const response = await callWorker('https://monka.tv/zk/js/script.js')
     expect(response.headers.get('content-type')).toBe('application/javascript; charset=utf-8')
@@ -112,10 +122,13 @@ describe('GET /zk/js/script.js (multi-site)', () => {
 
 describe('GET /zk/js/script.js (PLAUSIBLE as object)', () => {
   it('works when env.PLAUSIBLE is a parsed object (wrangler.toml [vars.PLAUSIBLE])', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/js/pa-abc123.js' })
-      .reply(200, SCRIPT_BODY, { headers: { 'content-type': 'text/javascript' } })
+    server.use(
+      http.get('https://plausible.io/js/pa-abc123.js', () => {
+        return new HttpResponse(SCRIPT_BODY, {
+          headers: { 'content-type': 'text/javascript' },
+        })
+      })
+    )
 
     const objectEnv = { ...env, PLAUSIBLE: multiSiteConfig }
     const request = new Request('https://monka.tv/zk/js/script.js')
@@ -132,17 +145,19 @@ describe('GET /zk/js/script.js (malformed PLAUSIBLE)', () => {
     const badEnv = { ...env, PLAUSIBLE: '{not json' }
     const request = new Request('https://monka.tv/zk/js/script.js')
     const ctx = createExecutionContext()
-    // Malformed JSON will throw — worker should not crash silently
-    await expect(worker.fetch(request, badEnv, ctx)).rejects.toThrow()
+    const response = await worker.fetch(request, badEnv, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(response.status).toBe(404)
   })
 })
 
 describe('POST /zk/api/event', () => {
   it('forwards event to plausible.io', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/api/event', method: 'POST' })
-      .reply(202, 'ok')
+    server.use(
+      http.post('https://plausible.io/api/event', () => {
+        return new HttpResponse('ok', { status: 202 })
+      })
+    )
 
     const response = await callWorker('https://monka.tv/zk/api/event', {
       method: 'POST',
@@ -153,10 +168,11 @@ describe('POST /zk/api/event', () => {
   })
 
   it('forwards event body intact', async () => {
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/api/event', method: 'POST' })
-      .reply(202, 'ok')
+    server.use(
+      http.post('https://plausible.io/api/event', () => {
+        return new HttpResponse('ok', { status: 202 })
+      })
+    )
 
     const eventBody = JSON.stringify({ name: 'custom-event', url: 'https://monka.tv/page', props: { variant: 'A' } })
     const response = await callWorker('https://monka.tv/zk/api/event', {
@@ -170,21 +186,20 @@ describe('POST /zk/api/event', () => {
   })
 
   it('strips cookies from forwarded request', async () => {
-    let receivedHeaders
-    fetchMock
-      .get('https://plausible.io')
-      .intercept({ path: '/api/event', method: 'POST' })
-      .reply(({ headers }) => {
-        receivedHeaders = headers
-        return { statusCode: 202, data: '' }
+    let receivedCookie
+    server.use(
+      http.post('https://plausible.io/api/event', ({ request }) => {
+        receivedCookie = request.headers.get('cookie')
+        return new HttpResponse('', { status: 202 })
       })
+    )
 
     await callWorker('https://monka.tv/zk/api/event', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: 'session=abc' },
       body: JSON.stringify({ name: 'pageview' }),
     })
-    expect(receivedHeaders['cookie']).toBeUndefined()
+    expect(receivedCookie).toBeNull()
   })
 
   it('returns 405 for non-POST requests', async () => {
