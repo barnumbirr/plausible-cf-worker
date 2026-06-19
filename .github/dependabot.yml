@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      # Collapse all security fixes into a single PR (otherwise Dependabot
+      # opens one PR per advisory — the overlapping #3-#6 situation).
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # Collapse routine version bumps into a single weekly PR.
+      npm-version:
+        applies-to: version-updates
+        patterns:
+          - "*"
