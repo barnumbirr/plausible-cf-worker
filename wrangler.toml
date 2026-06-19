@@ -1,4 +1,4 @@
-name = "edge-utils"
+name = "plausible-worker"
 main = "src/worker.js"
 compatibility_date = "2026-02-24"
 account_id = "d2f7937ca605f045ca5b840739a55da7"
