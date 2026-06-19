@@ -1,7 +1,9 @@
-name: Deploy
+name: Deploy to Cloudflare Workers
 
 on:
   push:
+    branches: [master]
+  pull_request:
     branches: [master]
 
 permissions:
@@ -9,11 +11,23 @@ permissions:
 
 jobs:
   test:
-    uses: ./.github/workflows/ci.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
 
   deploy:
-    needs: test
     runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
 
