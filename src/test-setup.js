@@ -3,7 +3,7 @@ import { server } from "./test-server.js";
 
 beforeAll(() =>
   server.listen({
-    onUnhandledRequest: "bypass",
+    onUnhandledRequest: "error",
   })
 );
 afterEach(() => server.resetHandlers());

@@ -1,18 +1,15 @@
-name: Deploy
+name: CI
 
 on:
-  push:
+  pull_request:
     branches: [master]
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   test:
-    uses: ./.github/workflows/ci.yml
-
-  deploy:
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +21,4 @@ jobs:
 
       - run: npm ci
 
-      - run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - run: npm test
