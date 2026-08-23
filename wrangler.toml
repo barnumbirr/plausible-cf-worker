@@ -6,9 +6,11 @@ account_id = "d2f7937ca605f045ca5b840739a55da7"
 # Plausible script URLs per hostname.
 # To add a new site: add an entry below + a [[routes]] entry, then redeploy.
 [vars.PLAUSIBLE]
+"apt.pkg.haus" = "https://plausible.io/js/pa-mEJlz3lTr_8EIQ-Wy0aO5.js"
 "homelab.lu" = "https://plausible.io/js/pa-7Qk4Gbi90pq2yhNnSP9Qo.js"
 "keysets.simon.tf" = "https://plausible.io/js/pa-LZpyGRXplYHk-pUTwGaM7.js"
 "monka.tv" = "https://plausible.io/js/pa-6LAAyedkYoAtuO1lpZknB.js"
+"pkg.haus" = "https://plausible.io/js/pa-kiBQqDx-awSRDKVVshfHr.js"
 "simon.tf" = "https://plausible.io/js/pa-yjnhvzFeKY12-Gfkv3BdZ.js"
 "0xff.tf" = "https://plausible.io/js/pa-bIeH0rnAp_z1IfvPhhlWT.js"
 "vault.tf" = "https://plausible.io/js/pa-b6bLKeWA9RrpQuWkEFxht.js"
@@ -33,3 +35,7 @@ zone_name = "vault.tf"
 [[routes]]
 pattern = "*0xff.tf/zk/*"
 zone_name = "0xff.tf"
+
+[[routes]]
+pattern = "*pkg.haus/zk/*"
+zone_name = "pkg.haus"
